@@ -47,8 +47,7 @@
                     if (!toggled) {
                         setToggled(true);
                     }
-
-                    setExpanded(!expanded);
+                    setExpanded((prev) => !prev);
                 };
 
                 return (
@@ -104,10 +103,8 @@
                 const { onSize } = props;
 
                 React.useEffect(() => {
-                    const width = ref.current.offsetWidth;
-                    const height = ref.current.offsetHeight;
                     if (onSize) {
-                        onSize({ width, height });
+                        onSize(ref.current.offsetWidth);
                     }
                 });
 
@@ -378,42 +375,36 @@
 
             function Devices() {
                 const ref = React.useRef();
-                const initedRef = React.useRef(false);
-                const [activeTab, setActiveTab] = React.useState("");
-                const [hasRightScroll, setHasRightScroll] = React.useState(false);
-
-                React.useEffect(() => {
-                    if (!activeTab && !initedRef.current) {
-                        initedRef.current = true;
-                        setActiveTab(
-                            new URLSearchParams(location.search).get("tab") || "all"
-                        );
-                    }
+                const [activeTab, setActiveTab] = React.useState(() => {
+                    let queryTab = new URLSearchParams(location.search).get("tab");
+                    return queryTab || "all";
                 });
+                const [hasRightScroll, setHasRightScroll] = React.useState(false);
+                let totalWidth = 0;
 
                 const onSelectInput = (event) => {
                     setActiveTab(event.target.value);
+                    totalWidth = 0;
                 };
 
-                let sizes = [];
+                const onSelectTab = (tab) => {
+                    setActiveTab(tab);
+                    totalWidth = 0;
+                };
+
+                // let sizes = [];
+                // const onSize = (size) => {
+                //     sizes = [...sizes, size];
+                // };
+
                 const onSize = (size) => {
-                    sizes = [...sizes, size];
+                    // console.log("adding", size);
+                    totalWidth += size;
                 };
 
                 React.useEffect(() => {
-                    const sumWidth = sizes.reduce(
-                        (acc, item) => acc + item.width,
-                        0
-                    );
-                    const sumHeight = sizes.reduce(
-                        (acc, item) => acc + item.height,
-                        0
-                    );
-
-                    const newHasRightScroll = sumWidth > ref.current.offsetWidth;
-                    if (newHasRightScroll !== hasRightScroll) {
-                        setHasRightScroll(newHasRightScroll);
-                    }
+                    // console.log(totalWidth, ref.current.offsetWidth);
+                    setHasRightScroll(totalWidth > ref.current.offsetWidth);
                 });
 
                 const onArrowCLick = () => {
@@ -438,6 +429,7 @@
                             <select
                                 className="section__select"
                                 defaultValue="all"
+                                value={activeTab}
                                 onInput={onSelectInput}
                             >
                                 {TABS_KEYS.map((key) => (
@@ -466,7 +458,7 @@
                                         }
                                         id={`tab_${key}`}
                                         aria-controls={`panel_${key}`}
-                                        onClick={() => setActiveTab(key)}
+                                        onClick={() => onSelectTab(key)}
                                     >
                                         {TABS[key].title}
                                     </li>
@@ -475,33 +467,27 @@
                         </div>
 
                         <div className="section__panel-wrapper" ref={ref}>
-                            {TABS_KEYS.map((key) => (
+                            {!!activeTab && (
                                 <div
-                                    key={key}
                                     role="tabpanel"
-                                    className={
-                                        "section__panel" +
-                                        (key === activeTab
-                                            ? ""
-                                            : " section__panel_hidden")
-                                    }
-                                    aria-hidden={
-                                        key === activeTab ? "false" : "true"
-                                    }
-                                    id={`panel_${key}`}
-                                    aria-labelledby={`tab_${key}`}
+                                    className={"section__panel"}
+                                    id={`panel_${activeTab}`}
+                                    aria-labelledby={`tab_${activeTab}`}
                                 >
                                     <ul className="section__panel-list">
-                                        {TABS[key].items.map((item, index) => (
-                                            <Event
-                                                key={index}
-                                                {...item}
-                                                onSize={onSize}
-                                            />
-                                        ))}
+                                        {TABS[activeTab].items.map(
+                                            (item, index) => (
+                                                <Event
+                                                    key={index}
+                                                    {...item}
+                                                    onSize={onSize}
+                                                />
+                                            )
+                                        )}
                                     </ul>
                                 </div>
-                            ))}
+                            )}
+
                             {hasRightScroll && (
                                 <div
                                     className="section__arrow"
